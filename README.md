@@ -22,7 +22,7 @@ Ensure you have the following installed:
 1. **Clone the repository**:
 
     ```bash
-    git clone https://github.com/iagopattas/graphql-fastapi.git
+    git clone https://github.com/pattasiago/graphql-fastapi.git
     cd graphql-fastapi
     ```
 
