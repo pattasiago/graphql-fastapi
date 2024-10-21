@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  postgres_graphql:
+    image: postgres:14
+    container_name: postgres_graphql
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: social_media
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./data/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app_network
+
+  app:
+    build: .
+    container_name: fastapi-app
+    ports:
+      - "8585:8000"
+    depends_on:
+      - postgres_graphql
+    environment:
+      - SQLALCHEMY_DATABASE_URL=postgresql://postgres:password@postgres_graphql/social_media
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
