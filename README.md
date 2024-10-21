@@ -36,7 +36,7 @@ Ensure you have the following installed:
 
 3. **Access the application**:
 
-    Once the containers are up, you can access the GraphQL Playground by navigating to [http://localhost:5433/graphql](http://localhost:5433/graphql).
+    Once the containers are up, you can access the GraphQL Playground by navigating to [http://localhost:8585/graphql](http://localhost:8585/graphql).
 
 ## GraphQL API Overview
 

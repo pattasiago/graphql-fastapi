@@ -10,8 +10,8 @@ class Query:
     @strawberry.field
     async def get_users(self,  info) -> List[UserSchema]:
         db = info.context["db"]
-        posts = UserResolver(db)
-        return posts.get_users(info)
+        users = UserResolver(db)
+        return users.get_users(info)
      
     @strawberry.field
     async def get_posts(self, info, user_id: Optional[int] = None) -> List[PostSchema]:

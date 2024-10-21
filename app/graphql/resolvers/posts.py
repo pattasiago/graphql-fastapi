@@ -8,7 +8,7 @@ class PostResolver:
     def __init__(self, db: Session):
         self.db = db
 
-    def execute(self, info, user_id: Optional[int] = None) -> List[PostSchema]:
+    def get_posts(self, info, user_id: Optional[int] = None) -> List[PostSchema]:
         load_owner = self._should_load_owner(info.selected_fields[0].selections)
         query = self._build_query(load_owner, user_id)
         posts = query.all()
