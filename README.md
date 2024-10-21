@@ -1,6 +1,6 @@
 # GraphQL + FastAPI Test Application
 
-This project is a test application built with **GraphQL** using **FastAPI** as the framework. It demonstrates the use of FastAPI with GraphQL queries and mutations, integrated with a PostgreSQL database.
+This project is a test application built with **GraphQL** using **FastAPI** as the framework. It demonstrates the use of FastAPI with GraphQL queries, integrated with a PostgreSQL database.
 
 ## Features
 
