@@ -40,6 +40,6 @@ class PostResolver:
     def _should_load_owner(self, selections) -> bool:
         owner_fields = list(filter(lambda x: x.name == "owner", selections))
         if owner_fields:
-            owner_fields_names = [f.name for f in owner_fields[0].selections]
-            return len(owner_fields_names) > 1
+            owner_fields_names = [f.name for f in owner_fields[0].selections if f.name != "id"]
+            return len(owner_fields_names) > 0
         return False
