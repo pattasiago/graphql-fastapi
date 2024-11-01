@@ -1,17 +1,59 @@
 import strawberry
-from typing import List
+from typing import List, Optional
+import datetime
+from app import models
+
 
 @strawberry.type
-class PostSchema:
-    id: int
+class BasePostSchema:
+    id: strawberry.ID
     title: str
     content: str
-    owner: "UserSchema"
+    created_at: datetime.datetime
+
+    @classmethod
+    def marshal(cls, post: models.Post) -> "BasePostSchema":
+        return cls(id=post.id,
+                   title=post.title,
+                   content=post.content,
+                   created_at=post.createdAt)
+
+@strawberry.type
+class PostSchema(BasePostSchema):
+    owner: Optional["BaseUserSchema"]
+    
+    @classmethod
+    def marshal(cls, post: models.Post) -> "PostSchema":
+        return cls(id=post.id,
+                   title=post.title,
+                   content=post.content,
+                   created_at=post.createdAt,
+                   owner=BaseUserSchema.marshal(post.owner)
+                   )
 
 
 @strawberry.type
-class UserSchema:
-    id: int
+class BaseUserSchema:
+    id: strawberry.ID
     name: str
     email: str
-    posts: List["PostSchema"]
+    created_at: datetime.datetime
+
+    @classmethod
+    def marshal(cls, user: models.User) -> "BaseUserSchema":
+        return cls(id=user.id,
+                   name=user.name,
+                   email=user.email,
+                   created_at=user.createdAt)
+
+@strawberry.type
+class UserSchema(BaseUserSchema):
+    posts: Optional[List["BasePostSchema"]]
+
+    @classmethod
+    def marshal(cls, user: models.User) -> "UserSchema":
+        return cls(id=user.id,
+                   name=user.name,
+                   email=user.email,
+                   created_at=user.createdAt,
+                   posts=[BasePostSchema.marshal(post) for post in user.posts])

@@ -4,10 +4,14 @@ from strawberry.fastapi import GraphQLRouter
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.graphql.query import Query
+from fastapi.responses import JSONResponse
 
 
 def get_context(db: Session = Depends(get_db)):
-    return {"db": db}
+    return {
+        "db": db
+    }
+
 
 app = FastAPI()
 schema = strawberry.Schema(query=Query)
