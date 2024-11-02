@@ -1,101 +1,45 @@
 from sqlalchemy import and_, or_, not_
 from sqlalchemy.orm import Query, class_mapper, contains_eager
-from datetime import datetime
 
-# def apply_filters(query: Query, logical_filter, model):
-#     if logical_filter is None:
-#         return query
+def prepare_query_columns(fields_structure, model, query, joined_models, path_prefix=None):
+    """
+    Resolve campos de modelo a partir de uma estrutura aninhada, aplicando joins para atributos aninhados se necessário.
 
-#     block_expressions = []
-#     joined_models = set()  # Conjunto para evitar joins duplicados
+    Parameters:
+        fields_structure (list): Estrutura dos campos, incluindo subcampos aninhados.
+        model: Modelo SQLAlchemy de referência para os campos.
+        query (Query): A consulta SQLAlchemy em construção.
+        joined_models (set): Conjunto de caminhos de relacionamento já com join aplicado.
+        path_prefix (tuple): Prefixo de caminho para identificar subcampos.
 
-#     for block in logical_filter.blocks:
-#         block_conditions = []
+    Returns:
+        Query: A consulta SQLAlchemy modificada.
+    """
+    for field in fields_structure:
+        if isinstance(field, dict):  # Se o campo é um dicionário, indica uma relação
+            for relationship_name, subfields in field.items():
+                # Resolve o relacionamento atual e o novo modelo associado
+                relationship = getattr(model, relationship_name)
+                next_model = relationship.mapper.class_
 
-#         for condition in block.conditions:
-#             if '.' in condition.field:
-#                 parts = condition.field.split('.')
-#                 current_model = model
+                # Construindo um prefixo para evitar duplicidade de joins
+                new_path_prefix = (path_prefix or ()) + (relationship,)
 
-#                 # Navega pelos atributos aninhados e aplica joins
-#                 for part in parts[:-1]:
-#                     mapper = class_mapper(current_model)
-#                     relationship = mapper.get_property(part)
+                # Aplica o join se ainda não foi feito para esse caminho
+                if new_path_prefix not in joined_models:
+                    query = query.outerjoin(relationship).options(contains_eager(*new_path_prefix))
+                    joined_models.add(new_path_prefix)
 
-#                     if relationship is None:
-#                         raise ValueError(f"Relacionamento não encontrado: {part}")
+                # Chamada recursiva para processar subcampos
+                query = prepare_query_columns(subfields, next_model, query, joined_models, new_path_prefix)
 
-#                     current_model = relationship.mapper.class_
+        else:
+            # Campo individual, sem subcampos aninhados - não precisa de join
+            getattr(model, field, None)
 
-#                     # Adiciona o join ao query apenas se ainda não estiver no conjunto de joins
-#                     if current_model not in joined_models:
-#                         query = query.outerjoin(current_model).options(contains_eager(relationship))
-#                         joined_models.add(current_model)
+    return query
 
-#                 # Acessa o último atributo
-#                 field = getattr(current_model, parts[-1], None)
-#                 if field is None:
-#                     continue  # Se o campo não existe, pula
-
-#             else:
-#                 field = getattr(model, condition.field, None)
-
-#             if field is None:
-#                 continue  # Se o campo não existe, pula
-
-#             # Aplica o operador de filtragem
-#             if condition.operator == "eq":
-#                 expr = (field == condition.value)
-#             elif condition.operator == "ne":
-#                 expr = (field != condition.value)
-#             elif condition.operator == "gt":
-#                 expr = (field > condition.value)
-#             elif condition.operator == "lt":
-#                 expr = (field < condition.value)
-#             elif condition.operator == "in":
-#                 expr = field.in_(condition.value if isinstance(condition.value, list) else [condition.value])
-#             elif condition.operator == "not_in":
-#                 expr = ~field.in_(condition.value if isinstance(condition.value, list) else [condition.value])
-#             elif condition.operator == "like":
-#                 expr = field.ilike(f"%{condition.value}%")
-#             else:
-#                 raise ValueError(f"Operador não reconhecido: {condition.operator}")
-
-#             if condition.negate:
-#                 expr = not_(expr)
-
-#             block_conditions.append(expr)
-
-#         # Combina as condições do bloco
-#         if block.operator.upper() == "AND":
-#             combined_block_expr = and_(*block_conditions)
-#         elif block.operator.upper() == "OR":
-#             combined_block_expr = or_(*block_conditions)
-#         else:
-#             raise ValueError(f"Operador inválido no bloco: {block.operator}")
-
-#         if block.negate:
-#             combined_block_expr = not_(combined_block_expr)
-
-#         block_expressions.append(combined_block_expr)
-
-#     # Combina os blocos
-#     if logical_filter.operator.upper() == "AND":
-#         combined_expr = and_(*block_expressions)
-#     elif logical_filter.operator.upper() == "OR":
-#         combined_expr = or_(*block_expressions)
-#     else:
-#         raise ValueError(f"Operador inválido no filtro: {logical_filter.operator}")
-
-#     if logical_filter.negate:
-#         combined_expr = not_(combined_expr)
-
-#     # Aplica o filtro combinado
-#     query = query.filter(combined_expr)
-#     return query
-
-
-def apply_filters(query: Query, logical_filter, model):
+def apply_filters(query: Query, logical_filter, model, fields_structure=None):
     """
     Aplica filtros lógicos em uma consulta SQLAlchemy com base nas condições definidas em logical_filter.
     
@@ -107,12 +51,14 @@ def apply_filters(query: Query, logical_filter, model):
     Returns:
         Query: A consulta modificada com os filtros aplicados.
     """
+    joined_models = set()  # Conjunto para evitar joins duplicados
+    query = prepare_query_columns(fields_structure, model, query, joined_models, path_prefix=None)
+
     if logical_filter is None:
         return query
 
     # Lista de expressões para os blocos de filtro
     block_expressions = []
-    joined_models = set()  # Conjunto para evitar joins duplicados
 
     for block in logical_filter.blocks:
         block_expression, query = process_block(block, model, query, joined_models)
@@ -140,7 +86,6 @@ def process_block(block, model, query, joined_models):
     """
     block_conditions = []
 
-    # block.conditions = resolve_conditions(block.conditions)
     for condition in block.conditions:
         field, query = resolve_field(condition.field, model, query, joined_models)
         if field is not None:
@@ -159,26 +104,35 @@ def resolve_field(field_path, model, query, joined_models):
         field_path (str): Caminho do campo, podendo incluir subcampos.
         model: Modelo SQLAlchemy de referência para o campo.
         query (Query): A consulta SQLAlchemy em construção.
-        joined_models (set): Conjunto de modelos já com join aplicado.
+        joined_models (set): Conjunto de caminhos de relacionamento já com join aplicado.
 
     Returns:
         Field, Query: Campo SQLAlchemy correspondente ao field_path e a consulta modificada.
     """
-    if '.' in field_path:
-        parts = field_path.split('.')
-        current_model = model
+    parts = field_path.split('.')
+    current_model = model  # Modelo inicial (ex.: Post)
+    relationship_path = []  # Armazena o caminho do relacionamento completo
 
-        for part in parts[:-1]:
-            relationship = get_relationship(current_model, part)
-            current_model = relationship.mapper.class_
-            
-            if current_model not in joined_models:
-                query = query.outerjoin(current_model).options(contains_eager(relationship))
-                joined_models.add(current_model)
+    # Itera sobre cada parte do caminho, exceto o último
+    for part in parts[:-1]:
+        # Obtém o relacionamento para o campo atual
+        relationship = getattr(current_model, part)
+        
+        # Adiciona ao caminho do relacionamento e cria uma tupla para verificar
+        relationship_path.append(relationship)
+        relationship_path_tuple = tuple(relationship_path)
+        
+        # Aplica o join somente se ainda não foi aplicado
+        if relationship_path_tuple not in joined_models:
+            query = query.outerjoin(relationship).options(contains_eager(*relationship_path))
+            joined_models.add(relationship_path_tuple)
 
-        return getattr(current_model, parts[-1], None), query
-    else:
-        return getattr(model, field_path, None), query
+        # Atualiza o modelo atual para o próximo na cadeia
+        current_model = relationship.mapper.class_
+
+    # Retorna o último campo na hierarquia e a query atualizada
+    return getattr(current_model, parts[-1], None), query
+
 
 def get_relationship(model, attribute):
     """
@@ -258,22 +212,3 @@ def combine_blocks(block_expressions, operator, negate):
     """
     combined_expr = and_(*block_expressions) if operator.upper() == "AND" else or_(*block_expressions)
     return not_(combined_expr) if negate else combined_expr
-
-
-# def parse_date(value):
-#     """Converte uma string ISO 8601 para datetime."""
-#     try:
-#         return datetime.fromisoformat(value)
-#     except ValueError:
-#         raise ValueError(f"Invalid date format: {value}")
-
-# def resolve_conditions(conditions):
-#     for condition in conditions:
-#         if condition.is_date:
-#             if isinstance(condition.value, str):
-#                 # Converte a string individual para datetime
-#                 condition.value = parse_date(condition.value)
-#             elif isinstance(condition.value, list):
-#                 # Converte cada string na lista para datetime
-#                 condition.value = [parse_date(v) if isinstance(v, str) else v for v in condition.value]
-#     return conditions

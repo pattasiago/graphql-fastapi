@@ -5,6 +5,16 @@ from app import models
 
 
 @strawberry.type
+class PlanSchema:
+    id: strawberry.ID
+    name: str
+
+    @classmethod
+    def marshal(cls, plan: models.Plan) -> "PlanSchema":
+        return cls(id=plan.id,
+                   name=plan.name)
+
+@strawberry.type
 class BasePostSchema:
     id: strawberry.ID
     title: str
@@ -38,12 +48,14 @@ class BaseUserSchema:
     name: str
     email: str
     created_at: datetime.datetime
+    plan: Optional["PlanSchema"]
 
     @classmethod
     def marshal(cls, user: models.User) -> "BaseUserSchema":
         return cls(id=user.id,
                    name=user.name,
                    email=user.email,
+                   plan=PlanSchema.marshal(user.plan[0]) if user.plan else None,
                    created_at=user.createdAt)
 
 @strawberry.type
@@ -56,4 +68,6 @@ class UserSchema(BaseUserSchema):
                    name=user.name,
                    email=user.email,
                    created_at=user.createdAt,
-                   posts=[BasePostSchema.marshal(post) for post in user.posts])
+                   plan=PlanSchema.marshal(user.plan[0]) if user.plan else None,
+                   posts=[BasePostSchema.marshal(post) for post in user.posts] if user.posts else None)
+

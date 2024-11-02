@@ -10,15 +10,6 @@ from typing import List, Optional
 class AnyScalar:
     pass
 
-
-@strawberry.scalar(
-    description="A custom scalar to parse a string into a datetime object",
-    serialize=lambda v: v.isoformat() if isinstance(v, datetime) else str(v),
-    parse_value=lambda v: datetime.fromisoformat(v) if isinstance(v, str) else v
-)
-class DateTimeScalar:
-    pass
-
 # Condição individual
 @strawberry.input
 class ConditionInput:
@@ -26,7 +17,6 @@ class ConditionInput:
     operator: str
     value: AnyScalar  # Valor ou lista de valores
     negate: bool = False  # Inverte a condição se for True
-    is_date: bool = False  # Indica se value é do tipo Date
 
 # Bloco lógico que combina condições com um operador (AND ou OR)
 @strawberry.input
