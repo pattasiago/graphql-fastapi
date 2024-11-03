@@ -1,6 +1,6 @@
 import strawberry
 from typing import List, Optional
-import datetime
+from datetime import datetime
 from app import models
 
 
@@ -19,7 +19,7 @@ class BasePostSchema:
     id: strawberry.ID
     title: str
     content: str
-    created_at: datetime.datetime
+    created_at: datetime
 
     @classmethod
     def marshal(cls, post: models.Post) -> "BasePostSchema":
@@ -34,12 +34,11 @@ class PostSchema(BasePostSchema):
     
     @classmethod
     def marshal(cls, post: models.Post) -> "PostSchema":
-        return cls(id=post.id,
-                   title=post.title,
-                   content=post.content,
-                   created_at=post.createdAt,
-                   owner=BaseUserSchema.marshal(post.owner)
-                   )
+        base_instance = BasePostSchema.marshal(post).__dict__
+        base_instance.update(
+            {"owner": BaseUserSchema.marshal(post.owner)}
+        )
+        return cls(**base_instance)
 
 
 @strawberry.type
@@ -47,7 +46,7 @@ class BaseUserSchema:
     id: strawberry.ID
     name: str
     email: str
-    created_at: datetime.datetime
+    created_at: datetime
     plan: Optional["PlanSchema"]
 
     @classmethod
@@ -64,10 +63,9 @@ class UserSchema(BaseUserSchema):
 
     @classmethod
     def marshal(cls, user: models.User) -> "UserSchema":
-        return cls(id=user.id,
-                   name=user.name,
-                   email=user.email,
-                   created_at=user.createdAt,
-                   plan=PlanSchema.marshal(user.plan[0]) if user.plan else None,
-                   posts=[BasePostSchema.marshal(post) for post in user.posts] if user.posts else None)
+        base_instance = BaseUserSchema.marshal(user).__dict__
+        base_instance.update({
+            "posts": [BasePostSchema.marshal(post) for post in user.posts]
 
+        })
+        return cls(**base_instance)

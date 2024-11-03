@@ -42,7 +42,8 @@ INSERT INTO "Users" ("Id", "Name", "Email") VALUES
 
 INSERT INTO "Posts" ("Id", "Title", "Content", "UserId") VALUES
 (2854, 'Primeiro Post', 'Conteúdo do primeiro post', 2563),
-(7895, 'Segundo Post', 'Conteúdo do segundo post', 4586);
+(7895, 'Segundo Post', 'Conteúdo do segundo post', 4586),
+(7896, 'Terceiro Post', 'Conteúdo do terceiro post', 4586);
 
 
 INSERT INTO "UserPlans" ("UserId", "PlanId")
